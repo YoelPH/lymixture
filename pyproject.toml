@@ -22,7 +22,7 @@ dependencies = [
     "lymph-model >= 1.2, < 2",
     # I think these packages should not be depedencies...
     "emcee < 4",
-    "lyscripts >= 1.0.0.a0",
+    "lyscripts >= 0.0.0.a0",
 ]
 dynamic = ["version"]
 
