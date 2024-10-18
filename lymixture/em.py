@@ -103,7 +103,23 @@ def maximization_component_wise(model: models.LymphMixture, latent: np.ndarray) 
 
 
 def log_prob_fn(theta, model):
+    lower_bounds = np.zeros(len(theta))
+    upper_bounds = np.ones(len(theta)) 
+
+    # Check if the parameters are within bounds
+    if np.any(theta < lower_bounds) or np.any(theta > upper_bounds):
+        return -np.inf  # Return -infinity if out of bounds
     _set_params(model,theta)
+    return model.likelihood(log=True)
+
+def log_prob_fn2(theta, model):
+    lower_bounds = np.zeros(len(theta))
+    upper_bounds = np.ones(len(theta)) 
+
+    # Check if the parameters are within bounds
+    if np.any(theta < lower_bounds) or np.any(theta > upper_bounds):
+        return -np.inf  # Return -infinity if out of bounds
+    model.set_params(*theta)
     return model.likelihood(log=True)
 
 
@@ -120,7 +136,7 @@ def sample_model_params(model, steps=100, latent=None) -> np.ndarray:
     
     ndim = len(current_params)
     nwalkers = 5 * ndim
-    perturbation = 1e-8 * np.random.randn(nwalkers, ndim)
+    perturbation = 1e-6 * np.random.randn(nwalkers, ndim)
     starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
 
     # Pass model as an additional argument to log_prob_fn
@@ -132,7 +148,7 @@ def sample_model_params(model, steps=100, latent=None) -> np.ndarray:
         )
         original_sampler.run_mcmc(initial_state=starting_points, nsteps=steps, progress=True)
 
-    return original_sampler.get_chain(discard=0, thin=1, flat=True)
+    return original_sampler.get_chain(discard=0, thin=10, flat=True)
 
 
 def get_complete_samples(model,model_samples) -> list:
@@ -149,3 +165,25 @@ def get_complete_samples(model,model_samples) -> list:
         model.set_mixture_coefs(model.compute_mixture(),)
         parameters.append(model.get_params(as_dict=True))
     return parameters
+
+def sample_fixed_mixture(model, steps = 100, latent = None):
+    if latent is None:
+        latent = model.get_resps()
+    model.set_resps(latent)
+    model.set_mixture_coefs(model.compute_mixture())
+    current_params = list(model.get_params(as_dict = False))
+    
+    ndim = len(current_params)
+    nwalkers = 5 * ndim
+    perturbation = 1e-6 * np.random.randn(nwalkers, ndim)
+    starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
+
+    with Pool() as pool:
+        original_sampler = emcee.EnsembleSampler(
+            nwalkers, ndim, log_prob_fn2,
+            args=(model,),
+            pool=pool,
+        )
+        original_sampler.run_mcmc(initial_state=starting_points, nsteps=steps, progress=True)
+
+    return original_sampler.get_chain(discard=0, thin=10, flat=True)
