@@ -120,7 +120,7 @@ def log_prob_fn2(theta, model):
     if np.any(theta < lower_bounds) or np.any(theta > upper_bounds):
         return -np.inf  # Return -infinity if out of bounds
     model.set_params(*theta)
-    return model.likelihood(log=True)
+    return model.likelihood(log=True, complete = False)
 
 
 def sample_model_params(model, steps=100, latent=None) -> np.ndarray:
