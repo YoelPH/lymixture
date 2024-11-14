@@ -61,7 +61,10 @@ def maximization(model: models.LymphMixture, latent: np.ndarray) -> dict[str, fl
     lb = np.zeros(shape=len(current_params))
     ub = np.ones(shape=len(current_params))
     def objective(params: np.ndarray) -> float:
-        _set_params(model, params)
+        try:
+            _set_params(model, params)
+        except ValueError:
+            return -np.inf
         # print(f"Optimizing with params: {params}") # DEBUG
         return -model.likelihood()
 
@@ -151,21 +154,6 @@ def sample_model_params(model, steps=100, latent=None) -> np.ndarray:
     return original_sampler.get_chain(discard=0, thin=10, flat=True)
 
 
-def get_complete_samples(model,model_samples) -> list:
-    """given a set of model samples, return the complete set of parameters for
-    the mixture model
-    """
-    parameters = []
-    for index in range(model_samples.shape[0]):
-        print(index)
-        _set_params(model,model_samples[index])
-        params = model.get_params(as_dict=True)    
-        latent = expectation(model,params)
-        model.set_resps(latent)
-        model.set_mixture_coefs(model.compute_mixture(),)
-        parameters.append(model.get_params(as_dict=True))
-    return parameters
-
 def sample_fixed_mixture(model, steps = 100, latent = None):
     if latent is None:
         latent = model.get_resps()
@@ -187,3 +175,4 @@ def sample_fixed_mixture(model, steps = 100, latent = None):
         original_sampler.run_mcmc(initial_state=starting_points, nsteps=steps, progress=True)
 
     return original_sampler.get_chain(discard=0, thin=10, flat=True)
+    

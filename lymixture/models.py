@@ -474,8 +474,10 @@ class LymphMixture(
         likelihoods and yielding the incomplete data likelihood per patient.
         """
         component_patient_likelihood = self.patient_component_likelihoods(t_stage, log)
-        full_mixture_coefs = self.repeat_mixture_coefs(t_stage, log)
-
+        full_mixture_coefs = self.repeat_mixture_coefs(t_stage, log = False)
+        if log == True:
+            full_mixture_coefs[full_mixture_coefs == 0] = 0.000000000000001
+            full_mixture_coefs = np.log(full_mixture_coefs)
         if log:
             llh = full_mixture_coefs + component_patient_likelihood
         else:
