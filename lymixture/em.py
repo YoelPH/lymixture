@@ -113,7 +113,7 @@ def log_prob_fn(theta, model):
     if np.any(theta < lower_bounds) or np.any(theta > upper_bounds):
         return -np.inf  # Return -infinity if out of bounds
     _set_params(model,theta)
-    return model.likelihood(log=True)
+    return model.likelihood(log=False)
 
 def log_prob_fn2(theta, model):
     lower_bounds = np.zeros(len(theta))
@@ -123,7 +123,7 @@ def log_prob_fn2(theta, model):
     if np.any(theta < lower_bounds) or np.any(theta > upper_bounds):
         return -np.inf  # Return -infinity if out of bounds
     model.set_params(*theta)
-    return model.likelihood(log=True, use_complete = False)
+    return model.likelihood(log=True, use_complete = True)
 
 
 def sample_fixed_mixture(model, steps=100, latent=None) -> np.ndarray:
