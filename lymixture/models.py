@@ -477,7 +477,9 @@ class LymphMixture(
         full_mixture_coefs = self.repeat_mixture_coefs(t_stage, log = False)
         if log == True:
             full_mixture_coefs[full_mixture_coefs == 0] = 0.000000000000001
-            full_mixture_coefs = np.log(full_mixture_coefs)
+            full_mixture_coefs_log = np.log(full_mixture_coefs)
+            full_mixture_coefs_log[full_mixture_coefs < 0] = -np.inf
+            full_mixture_coefs = full_mixture_coefs_log
         if log:
             llh = full_mixture_coefs + component_patient_likelihood
         else:
@@ -548,6 +550,8 @@ class LymphMixture(
         """Compute the complete data likelihood of the model."""
         llhs = self.patient_mixture_likelihoods(t_stage, log)
         resps = self.get_resps(t_stage=t_stage).to_numpy()
+        if np.any(llhs == -np.inf):
+            return -np.inf if log else 0.
         return np.sum(resps * llhs) if log else np.prod(llhs ** resps)
 
 
