@@ -126,11 +126,10 @@ def log_prob_fn2(theta, model):
     return model.likelihood(log=True, use_complete = True)
 
 
-def sample_fixed_mixture(model, steps=100, latent=None) -> np.ndarray:
+def sample_fixed_mixture(model, steps=100, latent=None, filename = 'chain_fixed_mix.hdf5', continue_sampling = False) -> np.ndarray:
     """Sample ``model`` params given expectation of latent variables.
     
     Returns an array with the samples of the model parameters."""
-    #Note: Right now the samples are very close to each other, such that the resulting differences in the mixture parameters are very small --> There is probably an error here.
     if latent is None:
         latent = model.get_resps()
     model.set_resps(latent)
@@ -140,21 +139,25 @@ def sample_fixed_mixture(model, steps=100, latent=None) -> np.ndarray:
     ndim = len(current_params)
     nwalkers = 5 * ndim
     perturbation = 1e-6 * np.random.randn(nwalkers, ndim)
-    starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
-
+    backend = emcee.backends.HDFBackend(filename)
+    if continue_sampling is False:
+        starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
+        backend.reset(nwalkers, ndim)
+    else:
+        starting_points = None
     # Pass model as an additional argument to log_prob_fn
     with Pool() as pool:
         original_sampler = emcee.EnsembleSampler(
             nwalkers, ndim, log_prob_fn,
             args=(model,),  # Pass model here
-            pool=pool,
+            pool=pool,backend=backend
         )
         original_sampler.run_mcmc(initial_state=starting_points, nsteps=steps, progress=True)
 
-    return original_sampler.get_chain(discard=0, thin=10, flat=True)
+    return backend, original_sampler.get_chain(discard=0, thin=10, flat=True)
 
 
-def sample_model_params(model, steps = 100, latent = None):
+def sample_model_params(model, steps = 100, latent = None, filename = 'chain_fixed_latent.hdf5', continue_sampling = False):
     if latent is None:
         latent = model.get_resps()
     model.set_resps(latent)
@@ -164,17 +167,24 @@ def sample_model_params(model, steps = 100, latent = None):
     ndim = len(current_params)
     nwalkers = 5 * ndim
     perturbation = 1e-6 * abs(np.random.randn(nwalkers, ndim))
-    starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
-    starting_points[starting_points > 1] = 1 - perturbation[starting_points > 1]
+    backend = emcee.backends.HDFBackend(filename)
+
+    if continue_sampling is False:
+        starting_points = np.ones((nwalkers, ndim)) * current_params + perturbation
+        starting_points[starting_points > 1] = 1 - perturbation[starting_points > 1]
+        backend.reset(nwalkers, ndim)
+    else:
+        starting_points = None
+    
     with Pool() as pool:
         original_sampler = emcee.EnsembleSampler(
             nwalkers, ndim, log_prob_fn2,
             args=(model,),
-            pool=pool,
+            pool=pool, backend = backend
         )
         original_sampler.run_mcmc(initial_state=starting_points, nsteps=steps, progress=True)
 
-    return original_sampler.get_chain(discard=0, thin=10, flat=True)
+    return backend, original_sampler.get_chain(discard=0, thin=10, flat=True)
 
 def sample_model_params_continue_chain(model, steps = 100, chain = None, latent = None):
     if latent is None:
